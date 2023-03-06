@@ -31,7 +31,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         id: payload.sub,
       },
     });
-    return payload;
+    return user;
   }
 
   private static extractJWT(req: RequestType): string | null {
@@ -60,7 +60,7 @@ export class JwtStrategyFromQueryString extends PassportStrategy(
         id: payload.sub,
       },
     });
-    return payload;
+    return user;
   }
 }
 
