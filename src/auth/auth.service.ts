@@ -93,8 +93,7 @@ export class AuthService {
           name: 'Chris Eagle',
         },
       });
-      const token = (await this.signToken(user.id, user.email, user.role))
-        .accessToken;
+      const token = await this.signToken(user.id, user.email, user.role);
       // ---
       this.mailService.sendMail({
         to: dto.email,
@@ -103,13 +102,18 @@ export class AuthService {
         template: './email-signup',
         context: {
           user: user.name,
-          url: `${this.config.get(
-            'DOMAIN_NAME',
-          )}auth/confirm_account?token=${token}`,
+          url: `${this.config.get('DOMAIN_NAME')}auth/confirm_account?token=${
+            token.accessToken
+          }`,
         },
       });
 
-      return { message: 'Signup successful!', access_token: token, user };
+      return {
+        message: 'Signup successful!',
+        access_token: token.accessToken,
+        refresh_token: token.refreshToken,
+        user,
+      };
     } catch (error) {
       if (error.code === 'P2002') {
         throw new ForbiddenException('Credentials already taken!');
@@ -121,6 +125,8 @@ export class AuthService {
   // -------------------------------------------------------------------------------
 
   async confirmAccount(user: User, res: Response) {
+    console.log('vào hàm handler');
+
     try {
       if (user) {
         if (!user.isActive) {
@@ -142,10 +148,9 @@ export class AuthService {
       user.email,
       user.role,
     );
-    res.cookie('refreshToken', refreshToken, { httpOnly: true });
-    res.cookie('accessToken', accessToken, { httpOnly: true });
+    res.cookie('refreshToken', refreshToken, { httpOnly: true, secure: false });
+    res.cookie('accessToken', accessToken, { httpOnly: true, secure: false });
     // Thêm
-    console.log('cookie:', res.cookie);
     return res.send({ message: 'Account is confirmed!' });
   }
 

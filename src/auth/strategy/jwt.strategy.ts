@@ -5,6 +5,7 @@ import { Injectable, Req } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ConfigService } from 'src/config/config.service';
 import { Request as RequestType } from 'express';
+import { request } from 'http';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
@@ -14,15 +15,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       //   ignoreExpiration: false,
       secretOrKey: config.get('JWT_SECRET'),
     });
-
-    // super({
-    //   jwtFromRequest: ExtractJwt.fromExtractors([
-    //     JwtStrategy.extractJWT,
-    //     ExtractJwt.fromAuthHeaderAsBearerToken(),
-    //   ]),
-    //   ignoreExpiration: false,
-    //   secretOrKey: config.get('JWT_SECRET'),
-    // });
   }
 
   async validate(payload: { sub: number; email: string }) {
@@ -33,12 +25,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
     return user;
   }
-  // private static extractJWT(req: RequestType): string | null {
-  //   if (req.cookies && 'access_token' in req.cookies) {
-  //     return req.cookies.access_token;
-  //   }
-  //   return null;
-  // }
 }
 
 @Injectable()
@@ -54,11 +40,39 @@ export class JwtStrategyFromQueryString extends PassportStrategy(
   }
 
   async validate(payload: { sub: number; email: string; role: string }) {
-    console.log('vvvvvvvvvv', payload);
-
     const user = await this.prisma.user.findUnique({
       where: {
-        email: payload.email,
+        id: payload.sub,
+      },
+    });
+    return user;
+  }
+}
+
+@Injectable()
+export class JwtStrategyFromCookie extends PassportStrategy(
+  Strategy,
+  'jwt-cookie',
+) {
+  constructor(config: ConfigService, private prisma: PrismaService) {
+    super({
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (request) => {
+          let token = null;
+          if (request && request.cookies) {
+            token = request.cookies['accessToken'];
+          }
+          return token;
+        },
+      ]),
+      secretOrKey: config.get('JWT_SECRET'),
+    });
+  }
+
+  async validate(payload: { sub: number; email: string; role: string }) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: payload.sub,
       },
     });
     return user;

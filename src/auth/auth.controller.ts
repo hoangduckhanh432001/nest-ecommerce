@@ -17,7 +17,11 @@ import {
   AuthDtoResetPasswordConfirm,
   AuthDtoSignup,
 } from './dto';
-import { JwtGuardFromHeader, JwtGuardFromQueryString } from './guard';
+import {
+  JwtGuardFromCookie,
+  JwtGuardFromHeader,
+  JwtGuardFromQueryString,
+} from './guard';
 import { RolesGuard } from './guard/role.guard';
 import { Roles } from './auth.role';
 import { Res } from '@nestjs/common/decorators';
@@ -50,7 +54,7 @@ export class AuthController {
 
   @Get('confirm_account')
   // @UseGuards(JwtGuardFromHeader)
-  @UseGuards(JwtGuardFromQueryString, RolesGuard)
+  @UseGuards(JwtGuardFromCookie, RolesGuard)
   confirm(
     @GetUser() user: User,
     @Res() res: Response,

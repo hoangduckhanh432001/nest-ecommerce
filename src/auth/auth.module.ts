@@ -6,6 +6,7 @@ import { AuthService, JwtBlacklistService } from './auth.service';
 import { RolesGuard } from './guard/role.guard';
 import {
   JwtStrategy,
+  JwtStrategyFromCookie,
   JwtStrategyFromQueryString,
   RefreshTokenStrategy,
 } from './strategy';
@@ -19,6 +20,7 @@ import {
     JwtStrategyFromQueryString,
     RolesGuard,
     RefreshTokenStrategy,
+    JwtStrategyFromCookie,
   ],
   imports: [JwtModule.register({})],
   exports: [JwtBlacklistService],
