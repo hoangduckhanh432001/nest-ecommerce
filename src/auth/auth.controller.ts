@@ -20,6 +20,8 @@ import {
 import { JwtGuardFromHeader, JwtGuardFromQueryString } from './guard';
 import { RolesGuard } from './guard/role.guard';
 import { Roles } from './auth.role';
+import { Res } from '@nestjs/common/decorators';
+import { Response, Request as RequestType } from 'express';
 
 @Roles(['user'])
 @Controller('auth')
@@ -33,9 +35,9 @@ export class AuthController {
   }
 
   @Post('signin')
-  signin(@Body() dto: AuthDto) {
+  signin(@Body() dto: AuthDto, @Res() res: Response) {
     console.log('signin');
-    return this.authService.signin(dto);
+    return this.authService.signin(dto, res);
   }
 
   @Post('signout')
@@ -49,8 +51,12 @@ export class AuthController {
   @Get('confirm_account')
   // @UseGuards(JwtGuardFromHeader)
   @UseGuards(JwtGuardFromQueryString, RolesGuard)
-  confirm(@GetUser() user: User) {
-    return this.authService.confirmAccount(user);
+  confirm(
+    @GetUser() user: User,
+    @Res() res: Response,
+    @Req() req: RequestType,
+  ) {
+    return this.authService.confirmAccount(user, res);
   }
 
   @Post('change_password')

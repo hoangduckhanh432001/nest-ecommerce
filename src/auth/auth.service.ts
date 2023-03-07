@@ -19,6 +19,7 @@ import { JwtService } from '@nestjs/jwt';
 import { MailerService } from '@nestjs-modules/mailer';
 import { Role, User } from '@prisma/client';
 import { ConfigService } from 'src/config/config.service';
+import { Response } from 'express';
 
 @Injectable()
 export class JwtBlacklistService {
@@ -52,7 +53,7 @@ export class AuthService {
   ) {}
 
   // ----------------------------------------------------------------------------------------
-  async signin(dto: AuthDto) {
+  async signin(dto: AuthDto, res: Response) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -65,10 +66,17 @@ export class AuthService {
         'User is not active yet or invalid credentials!',
       );
     }
-    const token = await this.signToken(user.id, user.email, user.role);
-    // TODO: set access token ở local storage
-    // localStorage.setItem('accessToken', token.access_token);
-    return [user, token];
+    const { accessToken, refreshToken } = await this.signToken(
+      user.id,
+      user.email,
+      user.role,
+    );
+    // Set refresh token as HttpOnly cookie
+    res.cookie('refreshToken', refreshToken, { httpOnly: true });
+    console.log('cookie:', res.cookie);
+
+    // TODO: set access token in local storage
+    return res.send([user, accessToken]);
   }
 
   // -------------------------------------------------------------------------------------
@@ -101,7 +109,7 @@ export class AuthService {
         },
       });
 
-      return { message: 'Signup successful!', token: token, user };
+      return { message: 'Signup successful!', access_token: token, user };
     } catch (error) {
       if (error.code === 'P2002') {
         throw new ForbiddenException('Credentials already taken!');
@@ -112,9 +120,7 @@ export class AuthService {
 
   // -------------------------------------------------------------------------------
 
-  async confirmAccount(user: User) {
-    console.log('mmmm', user.isActive);
-
+  async confirmAccount(user: User, res: Response) {
     try {
       if (user) {
         if (!user.isActive) {
@@ -124,31 +130,41 @@ export class AuthService {
             data: { isActive: true },
           });
         } else {
-          return { message: 'The account is already confirmed!' };
+          return res.send({ message: 'The account is already confirmed!' });
         }
       }
     } catch (error) {
       throw new UnauthorizedException('Invalid JWT token!');
     }
-    return { message: 'Account is confirmed!' };
+    // Thêm
+    const { accessToken, refreshToken } = await this.signToken(
+      user.id,
+      user.email,
+      user.role,
+    );
+    res.cookie('refreshToken', refreshToken, { httpOnly: true });
+    res.cookie('accessToken', accessToken, { httpOnly: true });
+    // Thêm
+    console.log('cookie:', res.cookie);
+    return res.send({ message: 'Account is confirmed!' });
   }
 
   // ------------------------------------------------------------------------------
-  async signToken(
-    userId: number,
-    email: string,
-    role: string,
-  ): Promise<Promise<AuthTokenDto>> {
+  async signToken(userId: number, email: string, role: string) {
     const payload = { sub: userId, email, role };
+    // const tokens = await Promise.all([
+    //   this.jwt.signAsync(payload, {
+    //     secret: this.config.get('JWT_SECRET'),
+    //     expiresIn: '1m',
+    //   }),
+    //   this.jwt.signAsync(payload, {
+    //     secret: this.config.get('REFRESH_SECRET'),
+    //     expiresIn: '7 days',
+    //   }),
+    // ]);
     const tokens = await Promise.all([
-      this.jwt.signAsync(payload, {
-        secret: this.config.get('JWT_SECRET'),
-        expiresIn: '15m',
-      }),
-      this.jwt.signAsync(payload, {
-        secret: this.config.get('REFRESH_SECRET'),
-        expiresIn: '7d',
-      }),
+      this.generateAccessToken(userId, email, role),
+      this.generateRefreshToken(userId, email, role),
     ]);
 
     return {
@@ -222,5 +238,39 @@ export class AuthService {
       data: { hash: newHash },
     });
     return user;
+  }
+
+  generateAccessToken(userId: number, email: string, role: string) {
+    const payload = { sub: userId, email, role };
+    const token = this.jwt.signAsync(payload, {
+      secret: this.config.get('JWT_SECRET'),
+      expiresIn: '30s',
+    });
+    return token;
+  }
+
+  generateRefreshToken(userId: number, email: string, role: string) {
+    const payload = { sub: userId, email, role };
+    const token = this.jwt.signAsync(payload, {
+      secret: this.config.get('REFRESH_SECRET'),
+      expiresIn: '7d',
+    });
+    return token;
+  }
+
+  verifyAccessToken(token: string): boolean {
+    try {
+      this.jwt.verify(token, { secret: this.config.get('JWT_SECRET') });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  storeTokenInCookie(res: Response, authToken: AuthTokenDto) {
+    res.cookie('refresh_token', authToken.refreshToken, {
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+      httpOnly: true,
+    });
   }
 }

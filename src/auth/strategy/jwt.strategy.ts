@@ -9,20 +9,20 @@ import { Request as RequestType } from 'express';
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(config: ConfigService, private prisma: PrismaService) {
-    // super({
-    //   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-    //   //   ignoreExpiration: false,
-    //   secretOrKey: config.get('JWT_SECRET'),
-    // });
-
     super({
-      jwtFromRequest: ExtractJwt.fromExtractors([
-        JwtStrategy.extractJWT,
-        ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ]),
-      ignoreExpiration: false,
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      //   ignoreExpiration: false,
       secretOrKey: config.get('JWT_SECRET'),
     });
+
+    // super({
+    //   jwtFromRequest: ExtractJwt.fromExtractors([
+    //     JwtStrategy.extractJWT,
+    //     ExtractJwt.fromAuthHeaderAsBearerToken(),
+    //   ]),
+    //   ignoreExpiration: false,
+    //   secretOrKey: config.get('JWT_SECRET'),
+    // });
   }
 
   async validate(payload: { sub: number; email: string }) {
@@ -33,13 +33,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
     return user;
   }
-
-  private static extractJWT(req: RequestType): string | null {
-    if (req.cookies && 'access_token' in req.cookies) {
-      return req.cookies.access_token;
-    }
-    return null;
-  }
+  // private static extractJWT(req: RequestType): string | null {
+  //   if (req.cookies && 'access_token' in req.cookies) {
+  //     return req.cookies.access_token;
+  //   }
+  //   return null;
+  // }
 }
 
 @Injectable()
@@ -54,10 +53,12 @@ export class JwtStrategyFromQueryString extends PassportStrategy(
     });
   }
 
-  async validate(payload: { sub: number; email: string }) {
+  async validate(payload: { sub: number; email: string; role: string }) {
+    console.log('vvvvvvvvvv', payload);
+
     const user = await this.prisma.user.findUnique({
       where: {
-        id: payload.sub,
+        email: payload.email,
       },
     });
     return user;
@@ -81,7 +82,7 @@ export class RefreshTokenStrategy extends PassportStrategy(
     });
   }
 
-  async validate(payload: { sub: number; email: string }) {
+  async validate(payload: { sub: number; email: string; role: string }) {
     const user = await this.prisma.user.findUnique({
       where: {
         id: payload.sub,
