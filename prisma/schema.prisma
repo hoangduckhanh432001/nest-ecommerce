@@ -95,28 +95,55 @@ model Product {
   name        String
   description String?
   SKU         String?
-  originPrice Float?
+  originPrice Float? 
   createdAt   DateTime @default(now())
   imageUrl    String?
   rating      Float?
 
+  // TODO: check điều kiện category hiện tại ko có children thì mới cho.
   category        Category? @relation(fields: [category_id], references: [id])
   category_id     Int?
 
-  // parent_category   Category? @relation("12", fields: [parent_category_id], references: [id])
-  // parent_category_id Int?
+  variations   ProductVariation[]
+  images       ProductImage[]
 
   @@map("products")
 }
 
 model Category {
   id        Int     @id @default(autoincrement())
-  name      String?
-  parent_category_id Int?
-  parentCategory  Category?   @relation("ParentCategory", fields: [parent_category_id], references: [id])
-  subcategories  Category[]  @relation("ParentCategory")
+  name      String @unique
+  description String?
+  parent_id Int?
+  parent  Category?   @relation("ParentCategory", fields: [parent_id], references: [id])
+  children  Category[]  @relation("ParentCategory")
 
   products          Product[]
 
   @@map("categories")
+}
+model ProductVariation {
+  id           Int      @id @default(autoincrement())
+  color        String   @db.VarChar(50)
+  size         String   @db.VarChar(50)
+  quantity     Int      @default(0)
+  productId    Int
+  product      Product  @relation(fields: [productId], references: [id])
+  createdAt    DateTime?        @default(now())
+  updatedAt    DateTime?        @updatedAt
+  // TODO:  cân nhắc xem có nên lấy giá trị default từ product.
+  price Float
+  variationImages ProductImage[]
+
+  
+  @@unique([productId, color, size])
+}
+
+model ProductImage {
+  id           Int               @id @default(autoincrement())
+  url          String
+  productId    Int?
+  product      Product?          @relation(fields: [productId], references: [id])
+  variationId  Int?
+  variation   ProductVariation?  @relation(fields: [variationId], references: [id])
 }

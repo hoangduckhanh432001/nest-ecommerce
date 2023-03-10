@@ -9,6 +9,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { ExtractJwt } from 'passport-jwt';
 import { AuthService, JwtBlacklistService } from '../auth.service';
 
+// TODO: đang bị lặp lại 1 chút ở 2 guard ở dưới
 @Injectable()
 export class JwtGuardFromQueryString extends AuthGuard('jwt-query') {
   constructor(
