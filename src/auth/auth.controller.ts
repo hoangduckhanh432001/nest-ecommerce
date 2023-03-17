@@ -24,7 +24,7 @@ import {
 } from './guard';
 import { RolesGuard } from './guard/role.guard';
 import { Roles } from './auth.role';
-import { Res } from '@nestjs/common/decorators';
+import { Param, Res } from '@nestjs/common/decorators';
 import { Response, Request as RequestType } from 'express';
 
 @Roles(['user'])
